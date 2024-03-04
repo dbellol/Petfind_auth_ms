@@ -81,7 +81,7 @@ const createUser = asyncHandler(async (req, res) => {
       throw new Error("Contraseña o usuario invalido");
     }
   });
-  /*Admin foundation*/
+  /*Foundation login*/
   const loginFoundation = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
     //Verificar si un usuario existe o no
@@ -115,7 +115,30 @@ const createUser = asyncHandler(async (req, res) => {
       throw new Error("Contraseña o usuario invalido");
     }
   });
+  //Actualizar un usuario
+const updatedaUser = asyncHandler(async (req, res) => {
+    const { id } = req.user;
+    validateMongoId(id);
+    try {
+      const updatedaUser = await User.findByIdAndUpdate(
+        id,
+        {
+          firstname: req?.body?.firstname,
+          lastname: req?.body?.lastname,
+          email: req?.body?.email,
+          mobile: req?.body?.mobile,
+          address: req?.body?.address,
+        },
+        {
+          new: true,
+        }
+      );
+      res.json(updatedaUser);
+    } catch (error) {
+      throw new Error(error);
+    }
+  });
   module.exports={
-    loginUserCtrl, createUser, loginAdmin, loginFoundation
+    loginUserCtrl, createUser, loginAdmin, loginFoundation, updatedaUser
   };
   
