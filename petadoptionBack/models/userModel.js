@@ -36,10 +36,6 @@ var userSchema = new mongoose.Schema({
         type: Boolean,
         default:false,
     },
-    /*car:{
-        type: Array,
-        default:[],
-    },*/
     address:{
       type:String,  
       required:true,

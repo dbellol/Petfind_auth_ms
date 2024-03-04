@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-/*Conexion de la BD con mongoose*/
+/*Conexion de la app con mongo Db Atlas*/
 const dbConnect = async () => {
     try {
         await mongoose.connect(process.env.mongoUrl, {
@@ -12,6 +12,4 @@ const dbConnect = async () => {
         console.error("Error al conectar a DB:", error.message);
     }
 };
-
-
 module.exports = dbConnect;
