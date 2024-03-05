@@ -4,6 +4,9 @@ const asyncHandler = require("express-async-handler");
 const validateMongoId = require("../utils/validateMongodbId");
 const { generateRefreshToken } = require("../config/refreshToken");
 const jwt = require("jsonwebtoken");
+const { sendEmail } = require("./emailController");
+const crypto = require('crypto');
+
 const createUser = asyncHandler(async (req, res) => {
     const email = req.body.email;
     const findUser = await User.findOne({ email: email });
@@ -116,29 +119,82 @@ const createUser = asyncHandler(async (req, res) => {
     }
   });
   //Actualizar un usuario
-const updatedaUser = asyncHandler(async (req, res) => {
-    const { id } = req.user;
-    validateMongoId(id);
-    try {
-      const updatedaUser = await User.findByIdAndUpdate(
-        id,
-        {
-          firstname: req?.body?.firstname,
-          lastname: req?.body?.lastname,
-          email: req?.body?.email,
-          mobile: req?.body?.mobile,
-          address: req?.body?.address,
-        },
-        {
-          new: true,
+    const updatedaUser = asyncHandler(async (req, res) => {
+        const { id } = req.user;
+        validateMongoId(id);
+        try {
+        const updatedaUser = await User.findByIdAndUpdate(
+            id,
+            {
+            firstname: req?.body?.firstname,
+            lastname: req?.body?.lastname,
+            email: req?.body?.email,
+            mobile: req?.body?.mobile,
+            address: req?.body?.address,
+            },
+            {
+            new: true,
+            }
+        );
+        res.json(updatedaUser);
+        } catch (error) {
+        throw new Error(error);
         }
-      );
-      res.json(updatedaUser);
-    } catch (error) {
-      throw new Error(error);
-    }
-  });
+    });
+  /*Actualizar contraseña*/
+    const updatePassword = asyncHandler(async (req, res) => {
+        const { _id } = req.user;
+        const { password } = req.body;
+        validateMongoId(_id);
+        const user = await User.findById(_id);
+        if (password) {
+        user.password = password;
+        const updatedPassword = await user.save();
+        res.json(updatedPassword);
+        } else {
+        res.json(user);
+        }
+    });
+  /*Olvidaste tu constraseña? correo*/
+    const forgotPasswordToken = asyncHandler(async (req, res) => {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+        if (!user) throw new Error("Usuario con este email no encontrado");
+        try {
+        const token = await user.createPasswordResetToken();
+        await user.save();
+        /*Ojo aquí para cuando lo subamos redirigirlos a la url de la subida*/
+        const resetURL = `Hola, sigue este link para reiniciar tu contraseña. Este link expirará en 10 minutos, contando desde ahora. <a href='http://localhost:5000/api/user/reset-password/${token}'>Click aqui</>`;
+        const data = {
+            to: email,
+            subject: "Olvidaste tu constraseña link",
+            text: "Hola usuario",
+            html: resetURL,
+        };
+        sendEmail(data);
+        res.json(token);
+        } catch (error) {
+        throw new Error(error);
+        }
+    });
+    /*Reset contraseña en el correo*/
+    const resetPassword = asyncHandler(async (req, res) => {
+        const { password } = req.body;
+        const { token } = req.params;
+        const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+        const user = await User.findOne({
+        passwordResetToken: hashedToken,
+        passwordResetExpires: { $gt: Date.now() },
+        });
+        if (!user)
+        throw new Error("El token expiro. Por favor intenta de nuevo más tarde");
+        user.password = password;
+        user.passwordResetToken = undefined;
+        user.passwordResetExpires = undefined;
+        await user.save();
+        res.json(user);
+    });
   module.exports={
-    loginUserCtrl, createUser, loginAdmin, loginFoundation, updatedaUser
+    loginUserCtrl, createUser, loginAdmin, loginFoundation, updatedaUser, forgotPasswordToken, resetPassword, updatePassword,
   };
   
