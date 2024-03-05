@@ -194,7 +194,29 @@ const createUser = asyncHandler(async (req, res) => {
         await user.save();
         res.json(user);
     });
+    //Ver todos los usuarios
+    const getaUser = asyncHandler(async (req, res) => {
+        try {
+        const getUsers = await User.find();
+        res.json(getUsers);
+        } catch (error) {
+        throw new Error(error);
+        }
+    });
+    //Ver un solo  usuario
+    const getsUser = asyncHandler(async (req, res) => {
+        const { id } = req.params;
+        validateMongoId(id);
+        try {
+        const getsUser = await User.findById(id);
+        res.json({
+            getsUser,
+        });
+        } catch (error) {
+        throw new Error(error);
+        }
+    });
   module.exports={
-    loginUserCtrl, createUser, loginAdmin, loginFoundation, updatedaUser, forgotPasswordToken, resetPassword, updatePassword,
+    loginUserCtrl, createUser, loginAdmin, loginFoundation, updatedaUser, forgotPasswordToken, resetPassword, updatePassword, getaUser, getsUser
   };
   
