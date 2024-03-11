@@ -216,7 +216,80 @@ const createUser = asyncHandler(async (req, res) => {
         throw new Error(error);
         }
     });
+/*Calificar*/
+const rating = asyncHandler(async(req,res)=>{
+  const{_id} = req.user;
+  const{star, userId, comment}=req.body;
+  try{
+      /*Producto con comentarios*/
+      const user = await User.findById(userId);
+      let alreadyRated = user.ratings.find((userId)=>userId.postedby.toString()===_id.toString());
+      if(alreadyRated){
+          const updateRating  = await User.updateOne({
+              ratings:{
+                  $elemMatch: alreadyRated
+              }},{
+                  $set:{
+                      "ratings.$.star":star, "ratings.$.comment":comment
+                  },
+              },{
+                  new:true,
+              }
+          );
+      }else{
+          /*Producto con puntuaciones*/
+          const rateUser = await User.findByIdAndUpdate(userId,{
+              $push:{
+                  ratings:{
+                      star:star,
+                      comment:comment,
+                      postedby: _id,
+                  },
+              },
+          },{
+              new:true,
+          }
+          );
+      }
+      /*Tener todas las puntuaciones del producto*/
+      const getAllRatings = await User.findById(userId);
+      let totalRating = getAllRatings.ratings.length;
+      let ratingSum = getAllRatings.ratings.map((item)=>item.star).reduce((prev,curr)=>prev+curr,0);
+      let actualRaiting = Math.round(ratingSum/totalRating);
+      let finalUser = await User.findByIdAndUpdate(userId,{
+      totalrating: actualRaiting,
+      }, 
+      {new:true,}
+      );
+      res.json(finalUser);
+  }catch (error){
+      throw new Error(error);
+  }
+});
+  //Borrar un usuario
+  const deletesUser = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    validateMongoId(id);
+
+    try {
+      const deletesUser = await User.findByIdAndDelete(id);
+      res.json({
+        deletesUser,
+      });
+    } catch (error) {
+      throw new Error(error);
+    }
+  });
+/*Borrar todos los usuarios*/
+  const deleteallUser = asyncHandler(async(req,res)=>{
+    try{
+        const getUsers = await User.delete();
+        res.json(deleteallUser);
+    }catch (error){
+        throw new Error(error);
+    }
+});
   module.exports={
-    loginUserCtrl, createUser, loginAdmin, loginFoundation, updatedaUser, forgotPasswordToken, resetPassword, updatePassword, getaUser, getsUser
+    loginUserCtrl, createUser, loginAdmin, loginFoundation, updatedaUser, forgotPasswordToken, resetPassword, updatePassword, getaUser, getsUser, rating, deletesUser, deleteallUser
   };
   
