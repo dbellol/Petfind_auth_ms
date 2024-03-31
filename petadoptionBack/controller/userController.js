@@ -5,6 +5,9 @@ const validateMongoId = require("../utils/validateMongodbId");
 const { generateRefreshToken } = require("../config/refreshToken");
 const jwt = require("jsonwebtoken");
 const { sendEmail } = require("./emailController");
+const {cloudinaryUploadImg} = require("../utils/cloudinary");
+const fs = require('fs');
+
 const crypto = require('crypto');
 
 const createUser = asyncHandler(async (req, res) => {
@@ -53,71 +56,90 @@ const createUser = asyncHandler(async (req, res) => {
   /*Admin login*/
   const loginAdmin = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
-    //Verificar si un usuario existe o no
     const findAdmin = await User.findOne({ email });
-    if (findAdmin.role !== "admin") throw new Error("No está autorizado");
-    if (findAdmin && (await findAdmin.isPasswordMatched(password))) {
-      const refreshToken = await generateRefreshToken(findAdmin?._id);
-      const updateuser = await User.findByIdAndUpdate(
-        findAdmin.id,
-        {
-          refreshToken: refreshToken,
-        },
-        {
-          new: true,
-        }
-      );
-      res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        maxAge: 72 * 60 * 60 * 1000,
-      });
-      res.json({
-        _id: findAdmin?._id,
-        firstname: findAdmin?.firstname,
-        lastname: findAdmin?.lastname,
-        email: findAdmin?.email,
-        mobile: findAdmin?.mobile,
-        address: findAdmin?.address,
-        token: generateToken(findAdmin?._id),
-      });
-    } else {
-      throw new Error("Contraseña o usuario invalido");
+
+    if (!findAdmin) {
+        throw new Error("El usuario no existe");
     }
-  });
-  /*Foundation login*/
-  const loginFoundation = asyncHandler(async (req, res) => {
+
+    if (findAdmin.role !== "admin") {
+        throw new Error("No está autorizado");
+    }
+
+    if (await findAdmin.isPasswordMatched(password)) {
+        const refreshToken = await generateRefreshToken(findAdmin?._id);
+        const updateuser = await User.findByIdAndUpdate(
+            findAdmin.id,
+            {
+                refreshToken: refreshToken,
+            },
+            {
+                new: true,
+            }
+        );
+
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            maxAge: 72 * 60 * 60 * 1000,
+        });
+
+        res.json({
+            _id: findAdmin?._id,
+            firstname: findAdmin?.firstname,
+            lastname: findAdmin?.lastname,
+            email: findAdmin?.email,
+            mobile: findAdmin?.mobile,
+            address: findAdmin?.address,
+            token: generateToken(findAdmin?._id),
+        });
+    } else {
+        throw new Error("Contraseña o usuario inválido");
+    }
+});
+
+const loginFoundation = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
-    //Verificar si un usuario existe o no
     const findFoundation = await User.findOne({ email });
-    if (findFoundation.role !== "foundation") throw new Error("No está autorizado");
-    if (findFoundation && (await findFoundation.isPasswordMatched(password))) {
-      const refreshToken = await generateRefreshToken(findFoundation?._id);
-      const updateuser = await User.findByIdAndUpdate(
-        findFoundation.id,
-        {
-          refreshToken: refreshToken,
-        },
-        {
-          new: true,
-        }
-      );
-      res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        maxAge: 72 * 60 * 60 * 1000,
-      });
-      res.json({
-        _id: findFoundation?._id,
-        firstname: findFoundation?.firstname,
-        lastname: findFoundation?.lastname,
-        email: findFoundation?.email,
-        mobile: findFoundation?.mobile,
-        address: findFoundation?.address,
-        token: generateToken(findFoundation?._id),
-      });
-    } else {
-      throw new Error("Contraseña o usuario invalido");
+
+    if (!findFoundation) {
+        throw new Error("El usuario no existe");
     }
-  });
+
+    if (findFoundation.role !== "foundation") {
+        throw new Error("No está autorizado");
+    }
+
+    if (await findFoundation.isPasswordMatched(password)) {
+        const refreshToken = await generateRefreshToken(findFoundation?._id);
+        const updateuser = await User.findByIdAndUpdate(
+            findFoundation.id,
+            {
+                refreshToken: refreshToken,
+            },
+            {
+                new: true,
+            }
+        );
+
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            maxAge: 72 * 60 * 60 * 1000,
+        });
+
+        res.json({
+            _id: findFoundation?._id,
+            firstname: findFoundation?.firstname,
+            lastname: findFoundation?.lastname,
+            email: findFoundation?.email,
+            mobile: findFoundation?.mobile,
+            address: findFoundation?.address,
+            token: generateToken(findFoundation?._id),
+        });
+    } else {
+        throw new Error("Contraseña o usuario inválido");
+    }
+});
+
   //Actualizar un usuario
     const updatedaUser = asyncHandler(async (req, res) => {
         const { id } = req.user;
@@ -216,7 +238,156 @@ const createUser = asyncHandler(async (req, res) => {
         throw new Error(error);
         }
     });
+/*Calificar*/
+const rating = asyncHandler(async(req,res)=>{
+  const{_id} = req.user;
+  const{star, userId, comment}=req.body;
+  try{
+      /*Producto con comentarios*/
+      const user = await User.findById(userId);
+      let alreadyRated = user.ratings.find((userId)=>userId.postedby.toString()===_id.toString());
+      if(alreadyRated){
+          const updateRating  = await User.updateOne({
+              ratings:{
+                  $elemMatch: alreadyRated
+              }},{
+                  $set:{
+                      "ratings.$.star":star, "ratings.$.comment":comment
+                  },
+              },{
+                  new:true,
+              }
+          );
+      }else{
+          /*Producto con puntuaciones*/
+          const rateUser = await User.findByIdAndUpdate(userId,{
+              $push:{
+                  ratings:{
+                      star:star,
+                      comment:comment,
+                      postedby: _id,
+                  },
+              },
+          },{
+              new:true,
+          }
+          );
+      }
+      /*Tener todas las puntuaciones del producto*/
+      const getAllRatings = await User.findById(userId);
+      let totalRating = getAllRatings.ratings.length;
+      let ratingSum = getAllRatings.ratings.map((item)=>item.star).reduce((prev,curr)=>prev+curr,0);
+      let actualRaiting = Math.round(ratingSum/totalRating);
+      let finalUser = await User.findByIdAndUpdate(userId,{
+      totalrating: actualRaiting,
+      }, 
+      {new:true,}
+      );
+      res.json(finalUser);
+  }catch (error){
+      throw new Error(error);
+  }
+});
+  //Borrar un usuario
+  const deletesUser = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    validateMongoId(id);
+
+    try {
+      const deletesUser = await User.findByIdAndDelete(id);
+      res.json({
+        deletesUser,
+      });
+    } catch (error) {
+      throw new Error(error);
+    }
+  });
+/*Borrar todos los usuarios*/
+  const deleteallUser = asyncHandler(async(req,res)=>{
+    try{
+        const getUsers = await User.delete();
+        res.json(deleteallUser);
+    }catch (error){
+        throw new Error(error);
+    }
+});
+//Bloquear usuario
+const blockUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  validateMongoId(id);
+  try {
+    const block = await User.findByIdAndUpdate(
+      id,
+      {
+        isBlocked: true,
+      },
+      {
+        new: true,
+      }
+    );
+    res.json(block);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+//Desbloquear usuario
+const unblockUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  validateMongoId(id);
+
+  try {
+    const unblock = await User.findByIdAndUpdate(
+      id,
+      {
+        isBlocked: false,
+      },
+      {
+        new: true,
+      }
+    );
+    res.json({
+      message: "Usuario desbloqueado",
+    });
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+ /*Cargar imagenes*/
+const uploadImages = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  validateMongoId(id);
+  try {
+    const uploader = (path) => cloudinaryUploadImg(path, "images"); // Obtener los archivos de la solicitud
+    const urls = [];
+    const files = req.files;
+    if (!files || files.length === 0) {
+      throw new Error("No files uploaded.");
+    }
+    for (const file of files) {
+      const { path } = file;
+      const { url, public_id } = await uploader(path);
+      urls.push({ url, public_id });
+      /*fs.unlinkSync(path);*/
+    }
+    // Actualizar la base de datos con las URLs de las imágenes
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      {
+        $push: { image: { $each: urls } }, // Use $each to push multiple items into the array
+      },
+      { new: true }
+    );
+    res.json(updatedUser);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+
+
   module.exports={
-    loginUserCtrl, createUser, loginAdmin, loginFoundation, updatedaUser, forgotPasswordToken, resetPassword, updatePassword, getaUser, getsUser
+    loginUserCtrl, createUser, loginAdmin, loginFoundation, updatedaUser, 
+    forgotPasswordToken, resetPassword, updatePassword, getaUser, getsUser, 
+    rating, deletesUser, deleteallUser, blockUser, unblockUser, uploadImages
   };
   

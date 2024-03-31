@@ -40,10 +40,24 @@ var userSchema = new mongoose.Schema({
       type:String,  
       required:true,
     },
-    /*wishlist:[{type: ObjectId, ref:"Product"}],
+    image:[{
+        public_id: String,
+        url:String,
+    }],
+    /*wishlist:[{type: ObjectId, ref:"Pets"}],*/
     refreshToken:{
         type:String,
-    },*/
+    },
+    ratings:[{
+        star: Number,
+        comment:String,
+        postedby:{type: mongoose.Schema.Types.ObjectId, ref:"User"},
+
+    },],
+    totalrating:{
+        type:String,
+        default:0
+    },
     passwordChangeAt: Date,
     passwordResetToken: String,
     passwordResetExpires: Date,
