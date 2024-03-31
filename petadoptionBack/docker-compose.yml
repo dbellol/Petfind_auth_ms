@@ -1,0 +1,24 @@
+version: '3.8'
+services:
+  mongodb:
+    image: mongo
+    container_name: mongodb2d
+    ports:
+      - '27017:27017'  # Puerto de MongoDB
+    volumes:
+      - mongodb_data:/data/db  # Volumen para persistir los datos de MongoDB
+
+  petfind_auth_ms:
+    build: .
+    container_name: petfind_auth_ms
+    ports:
+      - '5001:5001'  # Puerto de tu aplicación Node.js
+    environment:
+      - mongoUrl=mongodb://mongodb:27017/PetFind # URL de conexión a MongoDB
+    depends_on:
+      - mongodb  # Dependencia de MongoDB
+    links:
+      - mongodb:mongodb  # Enlace con el contenedor de MongoDB
+    
+volumes:
+  mongodb_data:
