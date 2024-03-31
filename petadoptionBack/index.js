@@ -9,7 +9,7 @@ const app = express();
 const authRouter=require('./routes/authRoute');
 const { errorHandler, notFound } = require('./middlewares/errorHandler');
 const morgan=require('morgan');
-
+const dotenv = require("dotenv").config();
 
 
 dbConnect();
@@ -20,6 +20,7 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended:false}));
 app.use(cookieParser());
+
 app.use('/api/user', authRouter);
 app.use(notFound);
 app.use(errorHandler);

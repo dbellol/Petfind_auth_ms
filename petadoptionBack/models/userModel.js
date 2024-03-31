@@ -40,6 +40,10 @@ var userSchema = new mongoose.Schema({
       type:String,  
       required:true,
     },
+    image:[{
+        public_id: String,
+        url:String,
+    }],
     /*wishlist:[{type: ObjectId, ref:"Pets"}],*/
     refreshToken:{
         type:String,
